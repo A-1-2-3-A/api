@@ -1,3 +1,5 @@
+// models/temas.js
+
 const connection = require('../config/database');
 
 const Tema = {};
@@ -9,28 +11,33 @@ const Tema = {};
  * @param {function} callback - Función de callback (error, resultado).
  */
 Tema.agregar = (temaData, archivoRuta, callback) => {
-    connection.beginTransaction(err => {
+    connection.getConnection((err, conn) => {
         if (err) return callback(err);
 
-        // 1. Insertar el tema principal
-        const temaQuery = 'INSERT INTO Temas (nombre, id_estudiante, estado_tema) VALUES (?, ?, ?)';
-        const temaParams = [temaData.nombre, temaData.id_estudiante, 'PRELIMINAR'];
+        conn.beginTransaction(err => {
+            if (err) { conn.release(); return callback(err); }
 
-        connection.query(temaQuery, temaParams, (error, results) => {
-            if (error) return connection.rollback(() => callback(error));
+            // 1. Insertar el tema principal
+            const temaQuery = 'INSERT INTO Temas (nombre, id_estudiante, estado_tema) VALUES (?, ?, ?)';
+            const temaParams = [temaData.nombre, temaData.id_estudiante, 'PRELIMINAR'];
 
-            const nuevoTemaId = results.insertId;
+            conn.query(temaQuery, temaParams, (error, results) => {
+                if (error) return conn.rollback(() => { conn.release(); callback(error); });
 
-            // 2. Insertar la primera versión del tema en VersionesTema
-            const versionQuery = 'INSERT INTO VersionesTema (id_tema, archivo_ruta, numero_version) VALUES (?, ?, ?)';
-            const versionParams = [nuevoTemaId, archivoRuta, 1];
+                const nuevoTemaId = results.insertId;
 
-            connection.query(versionQuery, versionParams, (error, versionResults) => {
-                if (error) return connection.rollback(() => callback(error));
+                // 2. Insertar la primera versión del tema en VersionesTema
+                const versionQuery = 'INSERT INTO VersionesTema (id_tema, numero_version, archivo_ruta) VALUES (?, ?, ?)';
+                const versionParams = [nuevoTemaId, 1, archivoRuta];
 
-                connection.commit(err => {
-                    if (err) return connection.rollback(() => callback(err));
-                    callback(null, { id: nuevoTemaId });
+                conn.query(versionQuery, versionParams, (error, versionResults) => {
+                    if (error) return conn.rollback(() => { conn.release(); callback(error); });
+
+                    conn.commit(err => {
+                        if (err) return conn.rollback(() => { conn.release(); callback(err); });
+                        conn.release();
+                        callback(null, { id: nuevoTemaId });
+                    });
                 });
             });
         });
@@ -61,20 +68,7 @@ Tema.listarParaAdmin = (callback) => {
 };
 
 /**
- * Lista los temas que pertenecen a un estudiante específico.
- * @param {number} idEstudiante - El ID del estudiante.
- * @param {function} callback - Función de callback (error, resultados).
- */
-Tema.listarPorEstudiante = (idEstudiante, callback) => {
-    const query = 'SELECT id as idTema, nombre, estado_tema as estado FROM Temas WHERE id_estudiante = ? ORDER BY fecha_registro DESC';
-    connection.query(query, [idEstudiante], (error, results) => {
-        if (error) return callback(error, null);
-        callback(null, results);
-    });
-};
-
-/**
- * Busca un tema por ID y devuelve toda su información detallada para la vista de seguimiento.
+ * Busca un tema por su ID para obtener sus detalles completos.
  * @param {number} idTema - El ID del tema.
  * @param {function} callback - Función de callback (error, resultado).
  */
@@ -86,56 +80,42 @@ Tema.buscarDetalleCompleto = (idTema, callback) => {
             a.id as idAsignacion, a.id_tribunal,
             CONCAT(ut.nombres, ' ', ut.apellido_primero) as nombreTribunal,
             r.id as idRevision, r.id_version_tema, r.veredicto, r.observaciones as observaciones_finales, r.fecha_veredicto,
-            vt.numero_version, vt.archivo_ruta, vt.comentarios_estudiante,
-            c.texto_comentario, c.fecha_publicacion as fecha_comentario,
-            rf.archivo_retroalimentacion_ruta, rf.descripcion as descripcion_retroalimentacion
+            vt.numero_version, vt.archivo_ruta, vt.comentarios_estudiante
         FROM Temas t
         JOIN Usuarios u ON t.id_estudiante = u.id
         LEFT JOIN AsignacionesTemaTribunal a ON t.id = a.id_tema
         LEFT JOIN Usuarios ut ON a.id_tribunal = ut.id
         LEFT JOIN Revisiones r ON a.id = r.id_asignacion
         LEFT JOIN VersionesTema vt ON r.id_version_tema = vt.id
-        LEFT JOIN ComentariosTema c ON a.id = c.id_asignacion
-        LEFT JOIN RetroalimentacionesTema rf ON a.id = rf.id_asignacion
         WHERE t.id = ?
         ORDER BY a.id_tribunal, vt.numero_version;
     `;
-    // Esta consulta es compleja y devolverá filas repetidas. La lógica de negocio en el controlador
-    // se encargará de anidar y estructurar esta información correctamente.
     connection.query(query, [idTema], (error, results) => {
         if (error) return callback(error, null);
         callback(null, results);
     });
 };
 
-
 /**
- * Actualiza el nombre de un tema y opcionalmente su archivo (creando una nueva versión).
- * Solo se permite si el estado es 'PRELIMINAR'.
- * @param {number} idTema - El ID del tema a actualizar.
- * @param {object} temaData - Datos del tema (nombre).
- * @param {string|null} nuevaRutaArchivo - Nueva ruta del archivo, o null si no se cambia.
+ * Actualiza un tema, verificando que su estado sea 'PRELIMINAR'.
+ * @param {number} idTema - El ID del tema.
+ * @param {object} temaData - Los datos a actualizar.
  * @param {function} callback - Función de callback (error, resultado).
  */
-Tema.actualizar = (idTema, temaData, nuevaRutaArchivo, callback) => {
-    // Implementación más compleja que requiere transacciones y lógica de negocio.
-    // Esto se completará en el controlador, que llamará a las funciones del modelo necesarias.
-    // Por simplicidad, aquí solo se muestra la actualización del nombre.
+Tema.actualizar = (idTema, temaData, callback) => {
     const query = 'UPDATE Temas SET nombre = ? WHERE id = ? AND estado_tema = "PRELIMINAR"';
     connection.query(query, [temaData.nombre, idTema], (error, results) => {
         if (error) return callback(error);
-        // Lógica adicional para el archivo se manejará en el controlador
         callback(null, results);
     });
 };
 
 /**
- * Elimina un tema. Solo permitido si el estado es 'PRELIMINAR'.
- * @param {number} idTema - El ID del tema a eliminar.
+ * Elimina un tema, verificando que su estado sea 'PRELIMINAR'.
+ * @param {number} idTema - El ID del tema.
  * @param {function} callback - Función de callback (error, resultado).
  */
 Tema.eliminar = (idTema, callback) => {
-    // Se añade la validación de estado en la consulta para mayor seguridad.
     const query = 'DELETE FROM Temas WHERE id = ? AND estado_tema = "PRELIMINAR"';
     connection.query(query, [idTema], (error, results) => {
         if (error) return callback(error);
@@ -143,8 +123,11 @@ Tema.eliminar = (idTema, callback) => {
     });
 };
 
-
-// Se añade una función simple para obtener un tema, necesaria para las validaciones
+/**
+ * Busca un tema por su ID (versión simple para validaciones).
+ * @param {number} id - El ID del tema.
+ * @param {function} callback - Función de callback (error, resultado).
+ */
 Tema.buscarPorIdSimple = (id, callback) => {
     const query = 'SELECT * FROM Temas WHERE id = ?';
     connection.query(query, [id], (error, results) => {

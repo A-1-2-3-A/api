@@ -5,7 +5,8 @@ const AsignacionModel = require('../models/asignaciones');
 const asignacionController = {};
 
 /**
- * Designa tribunales a un tema.
+ * Designa tribunales a un tema. Llama al modelo que crea las asignaciones
+ * y los registros de revisión iniciales en una transacción.
  */
 asignacionController.agregar = (req, res) => {
     const { id_tema, ids_tribunales } = req.body;
@@ -22,39 +23,9 @@ asignacionController.agregar = (req, res) => {
     });
 };
 
-/**
- * Registra el veredicto de un tribunal para una revisión específica.
- */
-asignacionController.registrarVeredicto = (req, res) => {
-    const id_revision = req.params.id_revision;
-    const id_tribunal_token = req.decoded.id;
-    const { veredicto, observaciones } = req.body;
-
-    if (!veredicto) {
-        return res.status(400).json({ success: 0, message: 'El campo "veredicto" es requerido.' });
-    }
-
-    // Se verifica que el tribunal autenticado es el que corresponde a la asignación de esa revisión.
-    // Esta lógica de autorización es crucial.
-    AsignacionModel.buscarAsignacionPorIdRevision(id_revision, (err, asignacion) => {
-        if (err) return res.status(500).json({ success: 0, message: 'Error al buscar la asignación.' });
-        if (!asignacion) return res.status(404).json({ success: 0, message: 'Revisión o asignación no encontrada.' });
-        if (asignacion.id_tribunal !== id_tribunal_token) {
-            return res.status(403).json({ success: 0, message: 'Acceso denegado. No puede registrar un veredicto para una asignación que no le corresponde.' });
-        }
-
-        AsignacionModel.registrarVeredicto(id_revision, veredicto, observaciones, (err, results) => {
-            if (err) {
-                console.error('Error al registrar veredicto:', err);
-                return res.status(500).json({ success: 0, message: 'Error al registrar el veredicto.' });
-            }
-            return res.status(200).json({ success: 1, message: 'Veredicto registrado con éxito.' });
-        });
-    });
-};
 
 /**
- * Lista los tribunales asignados a un tema.
+ * Lista los tribunales asignados a un tema específico.
  */
 asignacionController.listarPorTema = (req, res) => {
     AsignacionModel.listarPorTema(req.params.id_tema, (err, results) => {
@@ -67,7 +38,8 @@ asignacionController.listarPorTema = (req, res) => {
 };
 
 /**
- * Lista los temas asignados a un tribunal.
+ * Lista los temas asignados a un tribunal específico.
+ * Incluye validación de permisos para que un tribunal solo vea lo suyo.
  */
 asignacionController.listarPorTribunal = (req, res) => {
     const id_tribunal_param = parseInt(req.params.id_tribunal, 10);

@@ -21,24 +21,23 @@ app.use(express.urlencoded({ extended: true })); // Para parsear cuerpos de peti
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // --- Conexión a la Base de Datos ---
-// Se importa el archivo para que se ejecute la lógica de conexión al iniciar el servidor
 require('./config/database');
 
 // --- Rutas de la API ---
-// Se añade un prefijo /api a todas las rutas para estandarizar.
 app.get('/api', (req, res) => {
     res.status(200).json({ success: 1, message: 'Bienvenido a la API del Sistema de Gestión de Temas v1.0' });
 });
 
 // -- Registro de todas las rutas de la aplicación --
 app.use('/api/public', require('./routes/public'));
-app.use('/api/usuarios', require('./routes/usuarios')); // Incluye /login y las rutas protegidas
+app.use('/api/usuarios', require('./routes/usuarios')); 
 app.use('/api/temas', require('./routes/temas'));
 app.use('/api/especialidades', require('./routes/especialidades'));
 app.use('/api/asignaciones', require('./routes/asignaciones'));
 app.use('/api/versiones', require('./routes/versiones'));
 app.use('/api/retroalimentaciones', require('./routes/retroalimentaciones'));
 app.use('/api/archivos', require('./routes/archivos'));
+app.use('/api/revisiones', require('./routes/revisiones')); // <-- Se añade la nueva ruta para revisiones
 
 // --- Inicio del Servidor ---
 const PORT = process.env.PORT || 3000;

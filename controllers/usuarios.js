@@ -1,95 +1,153 @@
-// Modelo de usuarios.js
+// controllers/usuarios.js
+
 const UsuarioModel = require('../models/usuarios');
 const jwt = require('jsonwebtoken');
 
-// Función para listar usuarios
+// Función para listar todos los usuarios
 const listar = (req, res) => {
     UsuarioModel.listar((err, results) => {
         if (err) {
             console.error('Error al listar usuarios:', err);
-            return res.status(500).json({ success: 0, message: 'Error al listar usuarios' });
+            return res.status(500).json({ success: 0, message: 'Error interno del servidor.' });
         }
-        return res.status(200).json({ success: 1, message: 'Usuarios obtenidos con exito', data: results });
+        res.status(200).json({ success: 1, data: results });
     });
 };
 
-// Función para agregar un usuario
+// Función para buscar un usuario por su ID
+const buscarPorId = (req, res) => {
+    const id = req.params.id;
+    UsuarioModel.buscarPorId(id, (err, result) => {
+        if (err) {
+            console.error(`Error al buscar usuario con ID ${id}:`, err);
+            return res.status(500).json({ success: 0, message: 'Error interno del servidor.' });
+        }
+        if (!result) {
+            return res.status(404).json({ success: 0, message: 'Usuario no encontrado.' });
+        }
+        res.status(200).json({ success: 1, data: result });
+    });
+};
+
+// Función para agregar un nuevo usuario
 const agregar = (req, res) => {
-    const usuario = req.body;
-    UsuarioModel.agregar(usuario, (err, results) => {
+    const usuarioData = req.body;
+
+    // Validación básica de entrada
+    if (!usuarioData.usuario || !usuarioData.clave || !usuarioData.nombres || !usuarioData.apellido_primero || !usuarioData.rol) {
+        return res.status(400).json({ success: 0, message: 'Faltan campos requeridos.' });
+    }
+
+    UsuarioModel.agregar(usuarioData, (err, result) => {
         if (err) {
             console.error('Error al agregar usuario:', err);
-            return res.status(500).json({ success: 0, message: 'Error en la Base de Datos al agregar usuario' });
+            // Manejo de error de usuario duplicado
+            if (err.code === 'ER_DUP_ENTRY') {
+                return res.status(409).json({ success: 0, message: 'El correo electrónico ya está en uso.' });
+            }
+            return res.status(500).json({ success: 0, message: 'Error al agregar el usuario.' });
         }
-        return res.status(201).json({ success: 1, message: 'Usuario agregado con exito', data: { id: results.id } });
+        res.status(201).json({ success: 1, message: 'Usuario agregado con éxito.', data: { id: result.id } });
     });
 };
 
 // Función para actualizar un usuario
 const actualizar = (req, res) => {
-    const usuario = req.body;
-    usuario.id = req.params.id; // Se toma el ID de la URL
-    UsuarioModel.actualizar(usuario, (err, results) => {
+    const idUsuario = req.params.id;
+    const usuarioData = req.body;
+    UsuarioModel.actualizar(idUsuario, usuarioData, (err, result) => {
         if (err) {
-            console.error('Error al actualizar usuario:', err);
-            return res.status(500).json({ success: 0, message: 'Error en la Base de Datos al actualizar usuario' });
+            console.error(`Error al actualizar usuario con ID ${idUsuario}:`, err);
+            return res.status(500).json({ success: 0, message: 'Error al actualizar el usuario.' });
         }
-        if (results.affectedRows === 0) {
-            return res.status(404).json({ success: 0, message: 'Usuario no encontrado' });
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: 0, message: 'Usuario no encontrado.' });
         }
-        return res.status(200).json({ success: 1, message: 'Usuario actualizado con exito' });
+        res.status(200).json({ success: 1, message: 'Usuario actualizado con éxito.' });
     });
 };
 
-// Función para eliminar (desactivar) un usuario
-const eliminar = (req, res) => {
-    const id = req.params.id; // Se toma el ID de la URL
-    UsuarioModel.desactivar(id, (err, results) => {
-        if (err) {
-            console.error('Error al eliminar usuario:', err);
-            return res.status(500).json({ success: 0, message: 'Error en la Base de Datos al eliminar usuario' });
-        }
-        if (results.affectedRows === 0) {
-            return res.status(404).json({ success: 0, message: 'Usuario no encontrado' });
-        }
-        return res.status(200).json({ success: 1, message: 'Usuario desactivado con exito' });
-    });
-};
-
-// Funcion para verificar credenciales y generar token
-const verificarCredenciales = (req, res) => {
-    const body = req.body;
-    UsuarioModel.verificarCredenciales(body, (err, results) => {
-        if (err) {
-            console.error('Error al verificar credenciales:', err);
-            return res.status(500).json({ success: 0, message: 'Error en la Base de Datos' });
-        }
-        if (!results) {
-            return res.status(401).json({ success: 0, message: 'Credenciales incorrectas o usuario inactivo' });
-        }
-        const { id, usuario, rol } = results;
-        const token = jwt.sign({ id, usuario, rol }, process.env.SECRET, { expiresIn: '1h' });
-        return res.status(200).json({ success: 1, message: 'Credenciales verificadas con exito', data: { id, usuario, rol }, token: token });
-    });
-};
-
-const cambiarClave = (req, res) => {
+// Función para cambiar el estado de un usuario (activar/desactivar)
+const cambiarEstado = (req, res) => {
     const id = req.params.id;
-    const { clave_actual, clave_nueva } = req.body;
-    const id_token = req.decoded.id;
+    const estado = req.body.estado; // Se espera un booleano: true o false
 
-    if (parseInt(id) !== id_token) {
-        return res.status(403).json({ success: 0, message: 'Acceso denegado. No puedes cambiar la clave de otro usuario.' });
+    if (typeof estado !== 'boolean') {
+        return res.status(400).json({ success: 0, message: 'El campo "estado" debe ser un valor booleano.' });
     }
 
-    UsuarioModel.verificarCredenciales({ usuario: req.decoded.usuario, clave: clave_actual }, (err, usuario) => {
+    UsuarioModel.cambiarEstado(id, estado, (err, result) => {
+        if (err) {
+            console.error(`Error al cambiar estado del usuario con ID ${id}:`, err);
+            return res.status(500).json({ success: 0, message: 'Error al cambiar el estado del usuario.' });
+        }
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: 0, message: 'Usuario no encontrado.' });
+        }
+        const accion = estado ? 'activado' : 'desactivado';
+        res.status(200).json({ success: 1, message: `Usuario ${accion} con éxito.` });
+    });
+};
+
+// Función para el login de usuarios
+const login = (req, res) => {
+    const { usuario, clave } = req.body;
+    if (!usuario || !clave) {
+        return res.status(400).json({ success: 0, message: 'Usuario y clave son requeridos.' });
+    }
+
+    UsuarioModel.verificarCredenciales(usuario, clave, (err, result) => {
+        if (err) {
+            console.error('Error en login:', err);
+            return res.status(500).json({ success: 0, message: 'Error interno del servidor.' });
+        }
+        if (!result) {
+            return res.status(401).json({ success: 0, message: 'El correo electrónico o la contraseña son incorrectos.' });
+        }
+        
+        // Se extraen solo los datos necesarios para el payload del token y la respuesta
+        const userData = {
+            id: result.id,
+            usuario: result.usuario,
+            rol: result.rol,
+            nombres: result.nombres,
+            apellido_primero: result.apellido_primero
+        };
+
+        const token = jwt.sign(userData, process.env.SECRET, { expiresIn: '8h' });
+
+        // Se devuelve la estructura exacta que espera el FrontEnd
+        res.status(200).json({ success: 1, data: userData, token: token });
+    });
+};
+
+// Función para cambiar la contraseña de un usuario autenticado
+const cambiarClave = (req, res) => {
+    const idUsuarioRuta = parseInt(req.params.id);
+    const idUsuarioToken = req.decoded.id;
+    const { clave_actual, clave_nueva } = req.body;
+
+    if (idUsuarioRuta !== idUsuarioToken) {
+        return res.status(403).json({ success: 0, message: 'Acceso denegado. No puedes cambiar la contraseña de otro usuario.' });
+    }
+
+    if (!clave_actual || !clave_nueva) {
+        return res.status(400).json({ success: 0, message: 'La clave actual y la nueva son requeridas.' });
+    }
+
+    // Primero, verificamos que la clave actual sea correcta
+    UsuarioModel.verificarCredenciales(req.decoded.usuario, clave_actual, (err, usuario) => {
         if (err || !usuario) {
-            return res.status(401).json({ success: 0, message: 'Clave actual incorrecta.' });
+            return res.status(401).json({ success: 0, message: 'La contraseña actual es incorrecta.' });
         }
 
-        UsuarioModel.actualizar({ id, clave: clave_nueva }, (err, result) => {
-            if (err) return res.status(500).json({ success: 0, message: 'Error al cambiar la contraseña.' });
-            return res.status(200).json({ success: 1, message: 'Contraseña actualizada con éxito.' });
+        // Si es correcta, actualizamos a la nueva
+        UsuarioModel.cambiarClave(idUsuarioToken, clave_nueva, (err, result) => {
+            if (err) {
+                console.error(`Error al cambiar clave del usuario con ID ${idUsuarioToken}:`, err);
+                return res.status(500).json({ success: 0, message: 'Error al actualizar la contraseña.' });
+            }
+            res.status(200).json({ success: 1, message: 'Contraseña actualizada con éxito.' });
         });
     });
 };
@@ -97,9 +155,10 @@ const cambiarClave = (req, res) => {
 
 module.exports = {
     listar,
+    buscarPorId,
     agregar,
     actualizar,
-    eliminar,
-    verificarCredenciales,
+    cambiarEstado,
+    login,
     cambiarClave
 };

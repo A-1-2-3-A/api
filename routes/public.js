@@ -1,15 +1,21 @@
-// Importar lo necesario
+// routes/public.js
+
 const express = require('express');
 const router = express.Router();
-const PublicController = require('../controllers/public');
+const publicController = require('../controllers/public');
 
-// --- Rutas Públicas ---
+// --- Rutas Públicas (no requieren autenticación por token) ---
 
-// Ruta para listar temas aprobados
-router.get('/temas-aprobados', PublicController.listarTemasAprobados);
+/**
+ * GET /api/public/temas-aprobados
+ * Devuelve una lista de todos los temas que han sido aprobados.
+ */
+router.get('/temas-aprobados', publicController.listarTemasAprobados);
 
-// Ruta para listar todos los tribunales
-router.get('/tribunales', PublicController.listarTribunales);
+/**
+ * GET /api/public/tribunales
+ * Devuelve una lista de todos los docentes que pueden ser tribunales (roles Tribunal o Director).
+ */
+router.get('/tribunales', publicController.listarTribunales);
 
-// Exportacion del router
 module.exports = router;

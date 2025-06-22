@@ -1,46 +1,64 @@
-// Conexion a la base de datos
+// models/retroalimentaciones.js
+
 const connection = require('../config/database');
 
-// Función para agregar un comentario de un tribunal a una asignación
-const agregarComentario = (id_asignacion, texto_comentario, callback) => {
+const Retroalimentacion = {};
+
+/**
+ * Agrega un comentario de un tribunal a una asignación específica.
+ * @param {number} idAsignacion - El ID de la asignación (vínculo tema-tribunal).
+ * @param {string} textoComentario - El contenido del comentario.
+ * @param {function} callback - Función de callback (error, resultado).
+ */
+Retroalimentacion.agregarComentario = (idAsignacion, textoComentario, callback) => {
     const query = 'INSERT INTO ComentariosTema (id_asignacion, texto_comentario) VALUES (?, ?)';
-    connection.query(query, [id_asignacion, texto_comentario], (error, results) => {
-        if (error) { return callback(error); }
+    connection.query(query, [idAsignacion, textoComentario], (error, results) => {
+        if (error) return callback(error);
         callback(null, results);
     });
 };
 
-// Función para agregar un archivo de retroalimentación de un tribunal
-const agregarArchivo = (id_asignacion, archivo_ruta, descripcion, callback) => {
+/**
+ * Agrega un archivo de retroalimentación subido por un tribunal.
+ * @param {number} idAsignacion - El ID de la asignación.
+ * @param {string} archivoRuta - La ruta donde se guardó el archivo en el servidor.
+ * @param {string|null} descripcion - Una descripción opcional del archivo.
+ * @param {function} callback - Función de callback (error, resultado).
+ */
+Retroalimentacion.agregarArchivo = (idAsignacion, archivoRuta, descripcion, callback) => {
     const query = 'INSERT INTO RetroalimentacionesTema (id_asignacion, archivo_retroalimentacion_ruta, descripcion) VALUES (?, ?, ?)';
-    connection.query(query, [id_asignacion, archivo_ruta, descripcion], (error, results) => {
-        if (error) { return callback(error); }
+    connection.query(query, [idAsignacion, archivoRuta, descripcion], (error, results) => {
+        if (error) return callback(error);
         callback(null, results);
     });
 };
 
-// Función para listar toda la retroalimentación de una asignación
-const listarPorAsignacion = (id_asignacion, callback) => {
-    const response = { comentarios: [], archivos: [] };
+/**
+ * Lista todos los comentarios y archivos de retroalimentación para una asignación.
+ * @param {number} idAsignacion - El ID de la asignación.
+ * @param {function} callback - Función de callback (error, resultado).
+ */
+Retroalimentacion.listarPorAsignacion = (idAsignacion, callback) => {
+    const response = {
+        comentarios: [],
+        archivos: []
+    };
     
-    // Obtener comentarios
-    const queryComentarios = 'SELECT * FROM ComentariosTema WHERE id_asignacion = ? ORDER BY fecha_publicacion DESC';
-    connection.query(queryComentarios, [id_asignacion], (err, comentarios) => {
-        if (err) { return callback(err); }
+    const queryComentarios = 'SELECT id, texto_comentario, fecha_publicacion FROM ComentariosTema WHERE id_asignacion = ? ORDER BY fecha_publicacion ASC';
+    connection.query(queryComentarios, [idAsignacion], (err, comentarios) => {
+        if (err) return callback(err);
         response.comentarios = comentarios;
 
-        // Obtener archivos
-        const queryArchivos = 'SELECT * FROM RetroalimentacionesTema WHERE id_asignacion = ? ORDER BY fecha_carga DESC';
-        connection.query(queryArchivos, [id_asignacion], (err, archivos) => {
-            if (err) { return callback(err); }
-            response.archivos = archivos;
+        const queryArchivos = 'SELECT id, archivo_retroalimentacion_ruta, descripcion, fecha_carga FROM RetroalimentacionesTema WHERE id_asignacion = ? ORDER BY fecha_carga ASC';
+        connection.query(queryArchivos, [idAsignacion], (err, archivos) => {
+            if (err) return callback(err);
+            response.archivos = archivos.map(archivo => ({
+                ...archivo,
+                nombre: archivo.archivo_retroalimentacion_ruta.split('/').pop() // Extrae el nombre del archivo de la ruta
+            }));
             callback(null, response);
         });
     });
 };
 
-module.exports = {
-    agregarComentario,
-    agregarArchivo,
-    listarPorAsignacion
-};
+module.exports = Retroalimentacion;

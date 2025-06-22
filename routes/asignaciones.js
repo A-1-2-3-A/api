@@ -1,26 +1,35 @@
-// Importar lo necesario
+// routes/asignaciones.js
+
 const express = require('express');
 const router = express.Router();
-const AsignacionController = require('../controllers/asignaciones');
+const asignacionController = require('../controllers/asignaciones');
 const auth = require('../middlewares/auth');
 
-// --- Rutas para las Asignaciones ---
-const todosLosRoles = ['Director', 'Secretario', 'Tribunal', 'Estudiante'];
+// --- Definición de Roles ---
+const rolesAdmin = ['Director', 'Secretario'];
+const rolesTodos = ['Director', 'Secretario', 'Tribunal', 'Estudiante'];
 
-// Ruta para designar tribunales a un tema (Solo Director)
-router.post('/', [auth.verificarToken, auth.verificarRol(['Director'])], AsignacionController.agregar);
+// --- Rutas para el recurso "Asignaciones" ---
 
-// Ruta para ver los tribunales de un tema (Todos los roles)
-router.get('/tema/:id_tema', [auth.verificarToken, auth.verificarRol(todosLosRoles)], AsignacionController.listarPorTema);
+// POST /api/asignaciones/
+// Crea las nuevas asignaciones de tribunales para un tema.
+router.post('/', 
+    [auth.verificarToken, auth.verificarRol(rolesAdmin)], 
+    asignacionController.agregar
+);
 
-// Ruta para ver los temas de un tribunal (Solo Director y el Tribunal correspondiente)
-// NOTA: La autorización específica (solo el propio tribunal) debería manejarse en el controlador.
-router.get('/tribunal/:id_tribunal', [auth.verificarToken, auth.verificarRol(['Director', 'Tribunal'])], AsignacionController.listarPorTribunal);
+// GET /api/asignaciones/tema/:id_tema
+// Lista las asignaciones (tribunales) para un tema específico.
+router.get('/tema/:id_tema', 
+    [auth.verificarToken, auth.verificarRol(rolesTodos)], 
+    asignacionController.listarPorTema
+);
 
-// Ruta para que un tribunal registre su veredicto
-// NOTA: La autorización específica (solo el tribunal de esa asignación) debería manejarse en el controlador.
-router.put('/veredicto/:id_asignacion', [auth.verificarToken, auth.verificarRol(['Tribunal'])], AsignacionController.registrarVeredicto);
+// GET /api/asignaciones/tribunal/:id_tribunal
+// Lista los temas asignados a un tribunal específico.
+router.get('/tribunal/:id_tribunal', 
+    [auth.verificarToken, auth.verificarRol(['Director', 'Tribunal'])], 
+    asignacionController.listarPorTribunal
+);
 
-
-// Exportacion del router
 module.exports = router;

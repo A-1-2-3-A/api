@@ -1,23 +1,42 @@
-// Importar lo necesario
+// routes/especialidades.js
+
 const express = require('express');
 const router = express.Router();
-const EspecialidadController = require('../controllers/especialidades');
+const especialidadController = require('../controllers/especialidades');
 const auth = require('../middlewares/auth');
 
-// --- Rutas para las Especialidades ---
-const rolesPermitidos = ['Director', 'Secretario'];
+// --- Definición de Roles ---
+// Solo los administradores pueden gestionar el catálogo de especialidades.
+const rolesAdmin = ['Director', 'Secretario'];
 
-// Ruta para listar todas las especialidades
-router.get('/', [auth.verificarToken, auth.verificarRol(rolesPermitidos)], EspecialidadController.listar);
+// --- Rutas para el recurso "Especialidades" ---
 
-// Ruta para agregar una nueva especialidad
-router.post('/', [auth.verificarToken, auth.verificarRol(rolesPermitidos)], EspecialidadController.agregar);
+// GET /api/especialidades/
+// Lista todas las especialidades. Protegido para que solo usuarios logueados puedan verlas.
+router.get('/', 
+    [auth.verificarToken], 
+    especialidadController.listar
+);
 
-// Ruta para actualizar una especialidad por su ID
-router.put('/:id', [auth.verificarToken, auth.verificarRol(rolesPermitidos)], EspecialidadController.actualizar);
+// POST /api/especialidades/
+// Agrega una nueva especialidad.
+router.post('/', 
+    [auth.verificarToken, auth.verificarRol(rolesAdmin)], 
+    especialidadController.agregar
+);
 
-// Ruta para eliminar una especialidad por su ID
-router.delete('/:id', [auth.verificarToken, auth.verificarRol(rolesPermitidos)], EspecialidadController.eliminar);
+// PUT /api/especialidades/:id
+// Actualiza una especialidad existente.
+router.put('/:id', 
+    [auth.verificarToken, auth.verificarRol(rolesAdmin)], 
+    especialidadController.actualizar
+);
 
-// Exportacion del router
+// DELETE /api/especialidades/:id
+// Elimina una especialidad.
+router.delete('/:id', 
+    [auth.verificarToken, auth.verificarRol(rolesAdmin)], 
+    especialidadController.eliminar
+);
+
 module.exports = router;

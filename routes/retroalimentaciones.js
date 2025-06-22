@@ -1,20 +1,36 @@
-// Importar lo necesario
+// routes/retroalimentaciones.js
+
 const express = require('express');
 const router = express.Router();
-const RetroalimentacionController = require('../controllers/retroalimentaciones');
+const retroalimentacionController = require('../controllers/retroalimentaciones');
 const auth = require('../middlewares/auth');
-const upload = require('../middlewares/upload');
+const crearUploadMiddleware = require('../middlewares/upload'); // Importamos la función de fábrica
 
-// --- Rutas para las Retroalimentaciones ---
+// --- Definición de Roles ---
 const rolesParaVer = ['Director', 'Secretario', 'Tribunal', 'Estudiante'];
 
-// Ruta para que un tribunal agregue un comentario
-router.post('/comentario/:id_asignacion', [auth.verificarToken, auth.verificarRol(['Tribunal'])], RetroalimentacionController.agregarComentario);
+// --- Rutas para el recurso "Retroalimentaciones" ---
 
-// Ruta para que un tribunal agregue un archivo
-router.post('/archivo/:id_asignacion', [auth.verificarToken, auth.verificarRol(['Tribunal']), upload.single('archivo_retroalimentacion')], RetroalimentacionController.agregarArchivo);
+// POST /api/retroalimentaciones/comentario/:id_asignacion
+// Ruta para que un tribunal agregue un comentario de texto a una asignación.
+router.post('/comentario/:id_asignacion', 
+    [auth.verificarToken, auth.verificarRol(['Tribunal'])], 
+    retroalimentacionController.agregarComentario
+);
 
-// Ruta para listar toda la retroalimentación de una asignación
-router.get('/:id_asignacion', [auth.verificarToken, auth.verificarRol(rolesParaVer)], RetroalimentacionController.listarPorAsignacion);
+// POST /api/retroalimentaciones/archivo/:id_asignacion
+// Ruta para que un tribunal suba un archivo de retroalimentación.
+// Se usa el middleware de subida configurado para la carpeta 'retroalimentaciones'.
+router.post('/archivo/:id_asignacion', 
+    [auth.verificarToken, auth.verificarRol(['Tribunal']), crearUploadMiddleware('retroalimentaciones').single('archivo_retroalimentacion')], 
+    retroalimentacionController.agregarArchivo
+);
+
+// GET /api/retroalimentaciones/:id_asignacion
+// Ruta para listar todos los comentarios y archivos de una asignación.
+router.get('/:id_asignacion', 
+    [auth.verificarToken, auth.verificarRol(rolesParaVer)], 
+    retroalimentacionController.listarPorAsignacion
+);
 
 module.exports = router;

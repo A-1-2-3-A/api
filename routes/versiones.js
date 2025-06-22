@@ -1,17 +1,33 @@
-// Importar lo necesario
+// routes/versiones.js
+
 const express = require('express');
 const router = express.Router();
-const VersionController = require('../controllers/versiones');
+const versionController = require('../controllers/versiones');
 const auth = require('../middlewares/auth');
-const upload = require('../middlewares/upload');
+const crearUploadMiddleware = require('../middlewares/upload'); // Importamos la función de fábrica
 
-// --- Rutas para las Versiones ---
+// --- Definición de Roles ---
 const todosLosRoles = ['Director', 'Secretario', 'Tribunal', 'Estudiante'];
 
-// Ruta para que un estudiante agregue una nueva versión de su tema
-router.post('/', [auth.verificarToken, auth.verificarRol(['Estudiante']), upload.single('archivo_tema')], VersionController.agregar);
+// --- Rutas para el recurso "Versiones" ---
 
-// Ruta para listar las versiones de un tema
-router.get('/:id_tema', [auth.verificarToken, auth.verificarRol(todosLosRoles)], VersionController.listarPorTema);
+/**
+ * POST /api/versiones/
+ * Ruta para que un estudiante agregue una nueva versión de su tema.
+ * Se usa el middleware para subir un único archivo al directorio 'temas'.
+ */
+router.post('/', 
+    [auth.verificarToken, auth.verificarRol(['Estudiante']), crearUploadMiddleware('temas').single('archivo')], 
+    versionController.agregar
+);
+
+/**
+ * GET /api/versiones/tema/:id_tema
+ * Ruta para listar las versiones de un tema específico. Accesible para todos los involucrados.
+ */
+router.get('/tema/:id_tema', 
+    [auth.verificarToken, auth.verificarRol(todosLosRoles)], 
+    versionController.listarPorTema
+);
 
 module.exports = router;

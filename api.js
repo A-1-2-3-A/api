@@ -1,32 +1,44 @@
-// Variables de entorno
+// api.js
+
+// Cargar las variables de entorno desde el archivo .env
 require('dotenv').config();
 
-// Importar express
+// Importar dependencias
 const express = require('express');
+const cors = require('cors'); // Middleware para permitir peticiones de otros dominios
+const path = require('path');
+
+// Inicializar la aplicación Express
 const app = express();
 
-// --- Middlewares ---
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// --- Middlewares Globales ---
+app.use(cors()); // Habilitar CORS para todas las rutas
+app.use(express.json()); // Para parsear cuerpos de petición en formato JSON
+app.use(express.urlencoded({ extended: true })); // Para parsear cuerpos de petición URL-encoded
+
+// --- Servir Archivos Estáticos ---
+// Hacemos que la carpeta 'uploads' sea accesible públicamente.
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // --- Conexión a la Base de Datos ---
+// Se importa el archivo para que se ejecute la lógica de conexión al iniciar el servidor
 require('./config/database');
 
 // --- Rutas de la API ---
-app.get('/', (req, res) => {
-    res.status(200).send('Bienvenido a la API del Sistema de Gestión de Temas');
+// Se añade un prefijo /api a todas las rutas para estandarizar.
+app.get('/api', (req, res) => {
+    res.status(200).json({ success: 1, message: 'Bienvenido a la API del Sistema de Gestión de Temas v1.0' });
 });
 
-// Rutas Públicas (no requieren token)
-app.use('/public', require('./routes/public'));
-
-// Rutas Privadas (requieren token y autorización)
-app.use('/usuarios', require('./routes/usuarios'));
-app.use('/temas', require('./routes/temas'));
-app.use('/especialidades', require('./routes/especialidades'));
-app.use('/asignaciones', require('./routes/asignaciones'));
-app.use('/versiones', require('./routes/versiones'));
-app.use('/retroalimentaciones', require('./routes/retroalimentaciones'));
+// -- Registro de todas las rutas de la aplicación --
+app.use('/api/public', require('./routes/public'));
+app.use('/api/usuarios', require('./routes/usuarios')); // Incluye /login y las rutas protegidas
+app.use('/api/temas', require('./routes/temas'));
+app.use('/api/especialidades', require('./routes/especialidades'));
+app.use('/api/asignaciones', require('./routes/asignaciones'));
+app.use('/api/versiones', require('./routes/versiones'));
+app.use('/api/retroalimentaciones', require('./routes/retroalimentaciones'));
+app.use('/api/archivos', require('./routes/archivos'));
 
 // --- Inicio del Servidor ---
 const PORT = process.env.PORT || 3000;

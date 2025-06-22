@@ -1,24 +1,50 @@
-// Importar lo necesario
+// routes/temas.js
+
 const express = require('express');
 const router = express.Router();
-const TemaController = require('../controllers/temas');
+const temaController = require('../controllers/temas');
 const auth = require('../middlewares/auth');
-const upload = require('../middlewares/upload'); // Importar el middleware de subida
+const crearUploadMiddleware = require('../middlewares/upload'); // Importamos la función de fábrica
 
-// --- Rutas para los Temas ---
+// --- Definición de Roles ---
+const rolesAdmin = ['Director', 'Secretario'];
+const rolesTodos = ['Director', 'Secretario', 'Tribunal', 'Estudiante'];
 
-// Rutas accesibles para todos los roles autenticados
-const todosLosRoles = ['Director', 'Secretario', 'Tribunal', 'Estudiante'];
-router.get('/', [auth.verificarToken, auth.verificarRol(todosLosRoles)], TemaController.listar);
-router.get('/:id', [auth.verificarToken, auth.verificarRol(todosLosRoles)], TemaController.buscarPorId);
+// --- Rutas para el recurso "Temas" ---
 
-// Rutas con permisos específicos
-router.put('/:id', [auth.verificarToken, auth.verificarRol(['Director', 'Secretario'])], TemaController.actualizar);
+// GET /api/temas/
+// Lista los temas. La lógica en el controlador decide qué temas mostrar según el rol.
+router.get('/', 
+    [auth.verificarToken, auth.verificarRol(rolesTodos)], 
+    temaController.listar
+);
 
-router.delete('/:id', [auth.verificarToken, auth.verificarRol(['Director'])], TemaController.eliminar);
+// GET /api/temas/:id
+// Obtiene el detalle completo de un tema específico.
+router.get('/:id', 
+    [auth.verificarToken, auth.verificarRol(rolesTodos)], 
+    temaController.buscarDetalle // Llamando a la función de detalle completo
+);
 
-// Ruta para agregar un nuevo tema, ahora con subida de archivo
-router.post('/', [auth.verificarToken, auth.verificarRol(['Secretario']), upload.single('archivo_tema')], TemaController.agregar);
+// POST /api/temas/
+// Agrega un nuevo tema. Solo para Secretarios. Requiere un archivo.
+router.post('/', 
+    [auth.verificarToken, auth.verificarRol(['Secretario']), crearUploadMiddleware('temas').single('archivo')], 
+    temaController.agregar
+);
 
-// Exportacion del router
+// PUT /api/temas/:id
+// Actualiza un tema. Solo para Secretarios. Puede incluir un archivo opcional.
+router.put('/:id', 
+    [auth.verificarToken, auth.verificarRol(['Secretario']), crearUploadMiddleware('temas').single('nuevoArchivo')], 
+    temaController.actualizar
+);
+
+// DELETE /api/temas/:id
+// Elimina un tema. Solo para Director y Secretario.
+router.delete('/:id', 
+    [auth.verificarToken, auth.verificarRol(rolesAdmin)], 
+    temaController.eliminar
+);
+
 module.exports = router;

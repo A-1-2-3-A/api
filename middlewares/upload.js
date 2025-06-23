@@ -24,8 +24,13 @@ const crearUploadMiddleware = (subcarpeta) => {
             cb(null, directorioDestino);
         },
         filename: (req, file, cb) => {
-            // Se genera un nombre de archivo único para evitar sobreescritura
-            const nombreUnico = `${subcarpeta}-${Date.now()}${path.extname(file.originalname)}`;
+            // Toma el nombre base sin extensión y lo corta a 40 caracteres
+            let nombreBase = path.parse(file.originalname).name;
+            if (nombreBase.length > 40) {
+                nombreBase = nombreBase.substring(0, 40);
+            }
+            // Genera el nombre personalizado: nombreCortado-timestamp.ext
+            const nombreUnico = `${nombreBase}-${Date.now()}${path.extname(file.originalname)}`;
             cb(null, nombreUnico);
         }
     });

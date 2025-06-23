@@ -133,13 +133,25 @@ temasController.actualizar = (req, res) => {
         if (tema.estado_tema !== 'PRELIMINAR') {
             return res.status(403).json({ success: 0, message: 'Solo se pueden modificar temas en estado PRELIMINAR.' });
         }
-        
-        TemaModel.actualizar(idTema, temaData, nuevaRutaArchivo, (err, result) => {
+
+        TemaModel.actualizar(idTema, temaData, (err, result) => {
             if (err) {
                 console.error(`Error al actualizar tema con ID ${idTema}:`, err);
                 return res.status(500).json({ success: 0, message: 'Error al actualizar el tema.' });
             }
-            res.status(200).json({ success: 1, message: 'Tema actualizado con éxito.' });
+            
+            // Si hay archivo, actualiza la versión 1
+            if (nuevaRutaArchivo) {
+                TemaModel.actualizarArchivoPrimeraVersion(idTema, nuevaRutaArchivo, (err2, result2) => {
+                    if (err2) {
+                        console.error(`Error al actualizar archivo para tema ${idTema}:`, err2);
+                        return res.status(500).json({ success: 0, message: 'Tema actualizado, pero ocurrió un error al guardar el archivo.' });
+                    }
+                    return res.status(200).json({ success: 1, message: 'Tema y archivo principal actualizados con éxito.' });
+                });
+            } else {
+                return res.status(200).json({ success: 1, message: 'Tema actualizado con éxito.' });
+            }
         });
     });
 };

@@ -111,6 +111,23 @@ Tema.actualizar = (idTema, temaData, callback) => {
 };
 
 /**
+ * Actualiza el archivo PDF de la **primera versión** de un tema, 
+ * identificada siempre con `numero_version = 1` en la tabla VersionesTema.
+ * Solo debe usarse para cambios mientras el tema está en estado PRELIMINAR.
+ * 
+ * @param {number} idTema - El ID del tema cuyo archivo principal se actualizará.
+ * @param {string} archivoRuta - Nueva ruta (en el servidor) del archivo PDF subido.
+ * @param {function} callback - Función de callback (error, resultado).
+ */
+Tema.actualizarArchivoPrimeraVersion = (idTema, archivoRuta, callback) => {
+    const query = 'UPDATE VersionesTema SET archivo_ruta = ? WHERE id_tema = ? AND numero_version = 1';
+    connection.query(query, [archivoRuta, idTema], (error, results) => {
+        if (error) return callback(error);
+        callback(null, results);
+    });
+};
+
+/**
  * Elimina un tema, verificando que su estado sea 'PRELIMINAR'.
  * @param {number} idTema - El ID del tema.
  * @param {function} callback - Función de callback (error, resultado).
@@ -136,5 +153,87 @@ Tema.buscarPorIdSimple = (id, callback) => {
     });
 };
 
+/**
+ * Calcula y actualiza el estado general del tema según los ÚLTIMOS veredictos de los tribunales.
+ * Reglas:
+ * - EN REVISION: Falta al menos un tribunal por dar su último veredicto.
+ * - REPROBADO: Al menos un tribunal puso "REPROBADO" y todos revisaron.
+ * - REVISADO: Al menos uno puso "REVISADO", ninguno "REPROBADO" y todos revisaron.
+ * - APROBADO: Todos pusieron "APROBADO".
+ * 
+ * @param {number} idTema - El ID del tema.
+ * @param {function} callback - Callback (error, resultado).
+ */
+Tema.actualizarEstadoGeneral = (idTema, callback) => {
+    // Subconsulta: obtiene solo el último veredicto de cada tribunal para este tema (usando el id más alto)
+    const query = `
+        SELECT
+            a.id AS id_asignacion,
+            (
+                SELECT r.veredicto
+                FROM Revisiones r
+                WHERE r.id_asignacion = a.id
+                ORDER BY r.fecha_veredicto DESC, r.id DESC
+                LIMIT 1
+            ) AS veredicto
+        FROM AsignacionesTemaTribunal a
+        WHERE a.id_tema = ?
+        ORDER BY a.id ASC
+    `;
+    connection.query(query, [idTema], (err, filas) => {
+        if (err) return callback(err);
+
+        let sinVeredicto = 0;
+        let tieneReprobado = false;
+        let tieneRevisado = false;
+        let todosAprobado = true;
+
+        filas.forEach(row => {
+            if (!row.veredicto || row.veredicto === 'PENDIENTE') {
+                sinVeredicto++;
+                todosAprobado = false;
+            } else if (row.veredicto === 'REPROBADO') {
+                tieneReprobado = true;
+                todosAprobado = false;
+            } else if (row.veredicto === 'REVISADO') {
+                tieneRevisado = true;
+                todosAprobado = false;
+            } else if (row.veredicto !== 'APROBADO') {
+                todosAprobado = false;
+            }
+        });
+
+        let estadoNuevo;
+        if (sinVeredicto > 0) {
+            estadoNuevo = 'EN REVISION';
+        } else if (tieneReprobado) {
+            estadoNuevo = 'REPROBADO';
+        } else if (tieneRevisado) {
+            estadoNuevo = 'REVISADO';
+        } else if (todosAprobado) {
+            estadoNuevo = 'APROBADO';
+        } else {
+            estadoNuevo = 'EN REVISION';
+        }
+
+        // Si el nuevo estado es APROBADO, también actualiza la fecha_aprobacion (una sola vez)
+        let updateQuery;
+        let updateParams;
+
+        if (estadoNuevo === 'APROBADO') {
+            // Solo establece fecha_aprobacion si está en NULL (primera vez que aprueba)
+            updateQuery = 'UPDATE Temas SET estado_tema = ?, fecha_aprobacion = IFNULL(fecha_aprobacion, CURDATE()) WHERE id = ?';
+            updateParams = [estadoNuevo, idTema];
+        } else {
+            updateQuery = 'UPDATE Temas SET estado_tema = ? WHERE id = ?';
+            updateParams = [estadoNuevo, idTema];
+        }
+
+        connection.query(updateQuery, updateParams, (error, results) => {
+            if (error) return callback(error);
+            callback(null, { estado: estadoNuevo, resultados: results });
+        });
+    });
+};
 
 module.exports = Tema;

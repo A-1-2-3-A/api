@@ -5,56 +5,69 @@ const connection = require('../config/database');
 const Retroalimentacion = {};
 
 /**
- * Agrega un comentario de un tribunal a una asignación específica.
- * @param {number} idAsignacion - El ID de la asignación (vínculo tema-tribunal).
- * @param {string} textoComentario - El contenido del comentario.
- * @param {function} callback - Función de callback (error, resultado).
+ * Agrega un comentario de un tribunal para una versión específica.
+ * @param {number} idAsignacion - ID de la asignación Tema-Tribunal.
+ * @param {number} idVersionTema - ID de la versión del tema (revisión).
+ * @param {string} textoComentario - Contenido del comentario.
+ * @param {function} callback - Callback (error, resultado).
  */
-Retroalimentacion.agregarComentario = (idAsignacion, textoComentario, callback) => {
-    const query = 'INSERT INTO ComentariosTema (id_asignacion, texto_comentario) VALUES (?, ?)';
-    connection.query(query, [idAsignacion, textoComentario], (error, results) => {
+Retroalimentacion.agregarComentario = (idAsignacion, idVersionTema, textoComentario, callback) => {
+    const query = 'INSERT INTO ComentariosTema (id_asignacion, id_version_tema, texto_comentario) VALUES (?, ?, ?)';
+    connection.query(query, [idAsignacion, idVersionTema, textoComentario], (error, results) => {
         if (error) return callback(error);
         callback(null, results);
     });
 };
 
 /**
- * Agrega un archivo de retroalimentación subido por un tribunal.
- * @param {number} idAsignacion - El ID de la asignación.
- * @param {string} archivoRuta - La ruta donde se guardó el archivo en el servidor.
- * @param {string|null} descripcion - Una descripción opcional del archivo.
- * @param {function} callback - Función de callback (error, resultado).
+ * Agrega un archivo de retroalimentación a una versión específica.
+ * @param {number} idAsignacion - ID de la asignación Tema-Tribunal.
+ * @param {number} idVersionTema - ID de la versión del tema.
+ * @param {string} archivoRuta - Ruta del archivo subido.
+ * @param {string|null} descripcion - Descripción opcional del archivo.
+ * @param {function} callback - Callback (error, resultado).
  */
-Retroalimentacion.agregarArchivo = (idAsignacion, archivoRuta, descripcion, callback) => {
-    const query = 'INSERT INTO RetroalimentacionesTema (id_asignacion, archivo_retroalimentacion_ruta, descripcion) VALUES (?, ?, ?)';
-    connection.query(query, [idAsignacion, archivoRuta, descripcion], (error, results) => {
+Retroalimentacion.agregarArchivo = (idAsignacion, idVersionTema, archivoRuta, descripcion, callback) => {
+    const query = 'INSERT INTO RetroalimentacionesTema (id_asignacion, id_version_tema, archivo_retroalimentacion_ruta, descripcion) VALUES (?, ?, ?, ?)';
+    connection.query(query, [idAsignacion, idVersionTema, archivoRuta, descripcion], (error, results) => {
         if (error) return callback(error);
         callback(null, results);
     });
 };
 
 /**
- * Lista todos los comentarios y archivos de retroalimentación para una asignación.
- * @param {number} idAsignacion - El ID de la asignación.
- * @param {function} callback - Función de callback (error, resultado).
+ * Lista comentarios y archivos de retroalimentación para una asignación y versión específica.
+ * @param {number} idAsignacion
+ * @param {number} idVersionTema
+ * @param {function} callback
  */
-Retroalimentacion.listarPorAsignacion = (idAsignacion, callback) => {
+Retroalimentacion.listarPorAsignacionYVersion = (idAsignacion, idVersionTema, callback) => {
     const response = {
         comentarios: [],
         archivos: []
     };
-    
-    const queryComentarios = 'SELECT id, texto_comentario, fecha_publicacion FROM ComentariosTema WHERE id_asignacion = ? ORDER BY fecha_publicacion ASC';
-    connection.query(queryComentarios, [idAsignacion], (err, comentarios) => {
+
+    const queryComentarios = `
+        SELECT id, texto_comentario, fecha_publicacion 
+        FROM ComentariosTema 
+        WHERE id_asignacion = ? AND id_version_tema = ?
+        ORDER BY fecha_publicacion ASC
+    `;
+    connection.query(queryComentarios, [idAsignacion, idVersionTema], (err, comentarios) => {
         if (err) return callback(err);
         response.comentarios = comentarios;
 
-        const queryArchivos = 'SELECT id, archivo_retroalimentacion_ruta, descripcion, fecha_carga FROM RetroalimentacionesTema WHERE id_asignacion = ? ORDER BY fecha_carga ASC';
-        connection.query(queryArchivos, [idAsignacion], (err, archivos) => {
+        const queryArchivos = `
+            SELECT id, archivo_retroalimentacion_ruta, descripcion, fecha_carga 
+            FROM RetroalimentacionesTema 
+            WHERE id_asignacion = ? AND id_version_tema = ?
+            ORDER BY fecha_carga ASC
+        `;
+        connection.query(queryArchivos, [idAsignacion, idVersionTema], (err, archivos) => {
             if (err) return callback(err);
             response.archivos = archivos.map(archivo => ({
                 ...archivo,
-                nombre: archivo.archivo_retroalimentacion_ruta.split('/').pop() // Extrae el nombre del archivo de la ruta
+                nombre: archivo.archivo_retroalimentacion_ruta.split('/').pop()
             }));
             callback(null, response);
         });

@@ -26,11 +26,11 @@ router.post('/archivo/:id_asignacion',
     retroalimentacionController.agregarArchivo
 );
 
-// GET /api/retroalimentaciones/:id_asignacion
-// Ruta para listar todos los comentarios y archivos de una asignación.
+// GET /api/retroalimentaciones/:id_asignacion?id_version_tema=##
+// Ruta para listar todos los comentarios y archivos de una asignación y version.
 router.get('/:id_asignacion', 
     [auth.verificarToken, auth.verificarRol(rolesParaVer)], 
-    retroalimentacionController.listarPorAsignacion
+    retroalimentacionController.listarPorAsignacionYVersion
 );
 
 module.exports = router;

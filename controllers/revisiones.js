@@ -37,7 +37,7 @@ revisionController.registrarVeredicto = (req, res) => {
                 return res.status(409).json({ success: 0, message: 'No se pudo registrar el veredicto. Es posible que ya haya sido emitido.' });
             }
 
-            // 3. (Lógica de negocio extra) Intentar actualizar el estado general del tema
+            // 3. (Lógica de negocio) Actualizar el estado general del tema
             TemaModel.actualizarEstadoGeneral(asignacion.id_tema, (err, result) => {
                 // Este resultado es secundario, la operación principal ya tuvo éxito
                 if(err) console.error("Error al actualizar estado del tema:", err);

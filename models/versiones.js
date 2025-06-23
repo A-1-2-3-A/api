@@ -20,63 +20,61 @@ Version.listarPorTema = (idTema, callback) => {
 };
 
 /**
- * Agrega una nueva versión de un tema y crea las revisiones pendientes para los tribunales.
- * @param {number} idTema - El ID del tema.
- * @param {string} archivoRuta - La ruta del archivo PDF de la nueva versión.
+ * Agrega una nueva versión de un tema y crea la revisión pendiente para un tribunal.
+ * Solo permite crearla si NO existe ya una revisión pendiente para esa asignación.
+ * @param {number} idAsignacion - El ID de la asignación tribunal-tema que puso REVISADO.
+ * @param {string} archivoRuta - Ruta del archivo PDF corregido.
  * @param {string|null} comentariosEstudiante - Comentarios opcionales del estudiante.
  * @param {function} callback - Función de callback (error, resultado).
  */
-Version.agregar = (idTema, archivoRuta, comentariosEstudiante, callback) => {
-    connection.beginTransaction(err => {
+Version.agregar = (idAsignacion, archivoRuta, comentariosEstudiante, callback) => {
+    // 0. Verificar que NO exista una revisión pendiente para esta asignación
+    const queryPendiente = `
+        SELECT id FROM Revisiones 
+        WHERE id_asignacion = ? AND veredicto = 'PENDIENTE'
+        LIMIT 1
+    `;
+    connection.query(queryPendiente, [idAsignacion], (err, revisiones) => {
         if (err) return callback(err);
+        if (revisiones.length > 0) {
+            return callback(new Error('Ya existe una revisión pendiente para este tribunal. Espera el veredicto antes de enviar otra versión.'));
+        }
 
-        // 1. Obtener el número de la última versión para incrementarlo
-        const lastVersionQuery = 'SELECT COALESCE(MAX(numero_version), 0) as max_version FROM VersionesTema WHERE id_tema = ?';
-        connection.query(lastVersionQuery, [idTema], (error, results) => {
-            if (error) return connection.rollback(() => callback(error));
+        // 1. Obtener el id_tema de la asignación
+        const getTemaQuery = 'SELECT id_tema FROM AsignacionesTemaTribunal WHERE id = ?';
+        connection.query(getTemaQuery, [idAsignacion], (err, results) => {
+            if (err) return callback(err);
+            if (!results.length) return callback(new Error('Asignación no encontrada'));
 
-            const nuevaVersionNum = results[0].max_version + 1;
+            const idTema = results[0].id_tema;
 
-            // 2. Insertar la nueva versión en VersionesTema
-            const insertVersionQuery = 'INSERT INTO VersionesTema (id_tema, numero_version, archivo_ruta, comentarios_estudiante) VALUES (?, ?, ?, ?)';
-            connection.query(insertVersionQuery, [idTema, nuevaVersionNum, archivoRuta, comentariosEstudiante], (error, versionResult) => {
-                if (error) return connection.rollback(() => callback(error));
+            // 2. Obtener el número de la última versión de este tema
+            const lastVersionQuery = 'SELECT COALESCE(MAX(numero_version), 0) AS max_version FROM VersionesTema WHERE id_tema = ?';
+            connection.query(lastVersionQuery, [idTema], (err, results) => {
+                if (err) return callback(err);
 
-                const nuevaVersionId = versionResult.insertId;
+                const nuevaVersionNum = results[0].max_version + 1;
 
-                // 3. Actualizar el estado del tema principal a 'EN REVISION'
-                const updateTemaQuery = 'UPDATE Temas SET estado_tema = "EN REVISION" WHERE id = ?';
-                connection.query(updateTemaQuery, [idTema], (error) => {
-                    if (error) return connection.rollback(() => callback(error));
+                // 3. Insertar la nueva versión
+                const insertVersionQuery = 'INSERT INTO VersionesTema (id_tema, numero_version, archivo_ruta, comentarios_estudiante) VALUES (?, ?, ?, ?)';
+                connection.query(insertVersionQuery, [idTema, nuevaVersionNum, archivoRuta, comentariosEstudiante], (err, versionResult) => {
+                    if (err) return callback(err);
 
-                    // 4. Obtener todas las asignaciones de este tema para crear las nuevas revisiones
-                    const getAsignacionesQuery = 'SELECT id FROM AsignacionesTemaTribunal WHERE id_tema = ?';
-                    connection.query(getAsignacionesQuery, [idTema], (error, asignaciones) => {
-                        if (error) return connection.rollback(() => callback(error));
-                        if (asignaciones.length === 0) { // No hay tribunales asignados, solo confirmar
-                            return connection.commit(err => {
-                                if (err) return connection.rollback(() => callback(err));
-                                callback(null, { id: nuevaVersionId });
-                            });
-                        }
+                    const nuevaVersionId = versionResult.insertId;
 
-                        // 5. Crear un nuevo registro de revisión para cada tribunal asignado
-                        const queryRevisiones = 'INSERT INTO Revisiones (id_asignacion, id_version_tema, veredicto) VALUES ?';
-                        const revisionValues = asignaciones.map(asig => [asig.id, nuevaVersionId, 'PENDIENTE']);
-                        
-                        connection.query(queryRevisiones, [revisionValues], (error) => {
-                            if (error) return connection.rollback(() => callback(error));
+                    // 4. Crear UNA revisión pendiente solo para la asignación indicada
+                    const insertRevisionQuery = 'INSERT INTO Revisiones (id_asignacion, id_version_tema, veredicto) VALUES (?, ?, "PENDIENTE")';
+                    connection.query(insertRevisionQuery, [idAsignacion, nuevaVersionId], (err, revisionResult) => {
+                        if (err) return callback(err);
 
-                            connection.commit(err => {
-                                if (err) return connection.rollback(() => callback(err));
-                                callback(null, { id: nuevaVersionId });
-                            });
-                        });
+                        // 5. (Opcional) Actualizar el estado general del tema si lo deseas, o dejarlo como está
+                        callback(null, { id_version: nuevaVersionId, id_revision: revisionResult.insertId });
                     });
                 });
             });
         });
     });
 };
+
 
 module.exports = Version;

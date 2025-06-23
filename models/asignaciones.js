@@ -44,11 +44,11 @@ Asignacion.crearAsignaciones = (id_tema, ids_tribunales, callback) => {
                         // 4. Crear un nuevo registro de revisión para cada tribunal asignado
                         const queryRevisiones = 'INSERT INTO Revisiones (id_asignacion, id_version_tema) VALUES ?';
                         const revisionValues = asignacionIds.map(idAsignacion => [idAsignacion, id_version_tema]);
-                        
+
                         conn.query(queryRevisiones, [revisionValues], (error) => {
-                             if (error) return conn.rollback(() => { conn.release(); callback(error); });
-                             
-                             conn.commit(err => {
+                            if (error) return conn.rollback(() => { conn.release(); callback(error); });
+
+                            conn.commit(err => {
                                 if (err) return conn.rollback(() => { conn.release(); callback(err); });
                                 conn.release();
                                 callback(null, results);
@@ -143,9 +143,14 @@ Asignacion.listarPorTribunal = (idTribunal, callback) => {
             t.nombre as nombreTema, 
             t.estado_tema, 
             a.fecha_asignacion,
-            (SELECT r.veredicto FROM Revisiones r WHERE r.id_asignacion = a.id ORDER BY r.id DESC LIMIT 1) as mi_veredicto
+            -- NUEVO: Se añade la unión para obtener el nombre del estudiante
+            CONCAT(u.nombres, ' ', u.apellido_primero) as nombreEstudiante,
+            (SELECT r.veredicto FROM Revisiones r WHERE r.id_asignacion = a.id ORDER BY r.id DESC LIMIT 1) as mi_veredicto,
+            (SELECT r.fecha_veredicto FROM Revisiones r WHERE r.id_asignacion = a.id ORDER BY r.id DESC LIMIT 1) as fecha_veredicto
         FROM AsignacionesTemaTribunal a 
         JOIN Temas t ON a.id_tema = t.id
+        -- NUEVO: La línea del JOIN con la tabla de Usuarios
+        JOIN Usuarios u ON t.id_estudiante = u.id
         WHERE a.id_tribunal = ?;
     `;
     connection.query(query, [idTribunal], (error, results) => {

@@ -34,7 +34,7 @@ versionController.agregar = (req, res) => {
         return res.status(400).json({ success: 0, message: 'El ID de la asignación es requerido.' });
     }
 
-    const archivo_ruta = req.file.path.replace(/\\/g, "/");
+    const archivo_ruta = `uploads/temas/${req.file.filename}`;
 
     // 1. Validar que la asignación existe y pertenece al estudiante autenticado
     // Hay que buscar la asignación, obtener el id_tema y validar que sea del estudiante autenticado

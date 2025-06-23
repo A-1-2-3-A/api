@@ -68,6 +68,29 @@ Tema.listarParaAdmin = (callback) => {
 };
 
 /**
+ * Lista todos los temas registrados por un estudiante específico.
+ * @param {number} idEstudiante - El ID del estudiante.
+ * @param {function} callback - Función de callback (error, resultados).
+ */
+Tema.listarPorEstudiante = (idEstudiante, callback) => {
+    const query = `
+        SELECT
+            t.id as idTema,
+            t.nombre,
+            t.estado_tema as estado,
+            t.fecha_registro
+        FROM Temas t
+        WHERE t.id_estudiante = ?
+        ORDER BY t.fecha_registro DESC;
+    `;
+    connection.query(query, [idEstudiante], (error, results) => {
+        if (error) return callback(error, null);
+        callback(null, results);
+    });
+};
+
+
+/**
  * Busca un tema por su ID para obtener sus detalles completos.
  * @param {number} idTema - El ID del tema.
  * @param {function} callback - Función de callback (error, resultado).

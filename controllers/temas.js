@@ -29,9 +29,11 @@ const _estructurarDetalleTema = (rows) => {
         let tribunal = tribunalesMap.get(row.id_tribunal);
         if (!tribunal) {
             tribunal = {
+                idAsignacion: row.idAsignacion,
                 idTribunal: row.id_tribunal,
                 nombreCompleto: row.nombreTribunal,
                 veredictoActual: row.veredicto,
+                fechaUltimoVeredicto: row.fecha_veredicto,
                 historialCompleto: []
             };
             tribunalesMap.set(row.id_tribunal, tribunal);
@@ -41,6 +43,8 @@ const _estructurarDetalleTema = (rows) => {
             let version = tribunal.historialCompleto.find(v => v.version === row.numero_version);
             if (!version) {
                 version = {
+                    id: row.id_version_tema,
+                    id_revision: row.idRevision,
                     version: row.numero_version,
                     documentoEstudiante: {
                         nombre: row.archivo_ruta.split('/').pop(),
@@ -50,13 +54,9 @@ const _estructurarDetalleTema = (rows) => {
                     veredicto: row.veredicto,
                     observaciones: row.observaciones_finales,
                     fecha_veredicto: row.fecha_veredicto,
-                    comentariosTribunal: [],
-                    archivosRetroalimentacion: []
                 };
                 tribunal.historialCompleto.push(version);
             }
-            
-            // Lógica para añadir comentarios y archivos de retroalimentación se manejaría aquí si la consulta los incluyera
         }
     });
 
@@ -98,7 +98,7 @@ temasController.buscarDetalle = (req, res) => {
         if (!rows || rows.length === 0) {
             return res.status(404).json({ success: 0, message: 'Tema no encontrado.' });
         }
-        
+
         const datosEstructurados = _estructurarDetalleTema(rows);
         res.status(200).json({ success: 1, data: datosEstructurados });
     });
@@ -110,7 +110,7 @@ temasController.agregar = (req, res) => {
     if (!req.file) {
         return res.status(400).json({ success: 0, message: 'El archivo PDF del tema es requerido.' });
     }
-    const archivoRuta = req.file.path.replace(/\\/g, "/");
+    const archivoRuta = `uploads/temas/${req.file.filename}`;
 
     TemaModel.agregar(temaData, archivoRuta, (err, result) => {
         if (err) {
@@ -139,7 +139,7 @@ temasController.actualizar = (req, res) => {
                 console.error(`Error al actualizar tema con ID ${idTema}:`, err);
                 return res.status(500).json({ success: 0, message: 'Error al actualizar el tema.' });
             }
-            
+
             // Si hay archivo, actualiza la versión 1
             if (nuevaRutaArchivo) {
                 TemaModel.actualizarArchivoPrimeraVersion(idTema, nuevaRutaArchivo, (err2, result2) => {
@@ -166,7 +166,7 @@ temasController.eliminar = (req, res) => {
         if (tema.estado_tema !== 'PRELIMINAR') {
             return res.status(403).json({ success: 0, message: 'Solo se pueden eliminar temas en estado PRELIMINAR.' });
         }
-        
+
         TemaModel.eliminar(idTema, (err, result) => {
             if (err) {
                 console.error(`Error al eliminar tema con ID ${idTema}:`, err);

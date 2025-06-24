@@ -29,4 +29,10 @@ router.get('/tema-version/admin/:id',
     ArchivoController.descargarVersionTemaAdmin
 );
 
+// Ruta para que un Estudiante descargue su propia versión de tema.
+router.get('/tema-version/estudiante/:id',
+    [auth.verificarToken, auth.verificarRol(['Estudiante'])],
+    ArchivoController.descargarVersionTemaEstudiante
+);
+
 module.exports = router;

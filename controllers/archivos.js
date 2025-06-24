@@ -90,9 +90,22 @@ const descargarVersionTemaAdmin = (req, res) => {
     });
 };
 
+const descargarVersionTemaEstudiante = (req, res) => {
+    const idVersion = req.params.id;
+    const idEstudiante = req.decoded.id;
+
+    VersionModel.buscarParaDescargaEstudiante(idVersion, idEstudiante, (err, archivo) => {
+        if (err || !archivo) {
+            return res.status(403).json({ success: 0, message: 'Acceso denegado o archivo no encontrado.' });
+        }
+        descargar(archivo.archivo_ruta, res);
+    });
+};
+
 module.exports = {
     descargarRetroalimentacionEstudiante,
     descargarVersionTemaTribunal,
     descargarRetroalimentacionTribunal,
-    descargarVersionTemaAdmin
+    descargarVersionTemaAdmin,
+    descargarVersionTemaEstudiante
 };

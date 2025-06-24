@@ -111,4 +111,18 @@ Version.buscarRutaPorId = (idVersion, callback) => {
     });
 };
 
+Version.buscarParaDescargaEstudiante = (idVersion, idEstudiante, callback) => {
+    const query = `
+        SELECT vt.archivo_ruta
+        FROM VersionesTema vt
+        JOIN Temas t ON vt.id_tema = t.id
+        WHERE vt.id = ? AND t.id_estudiante = ?
+        LIMIT 1;
+    `;
+    connection.query(query, [idVersion, idEstudiante], (error, results) => {
+        if (error) return callback(error, null);
+        callback(null, results[0]);
+    });
+};
+
 module.exports = Version;

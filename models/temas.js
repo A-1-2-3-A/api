@@ -259,4 +259,16 @@ Tema.actualizarEstadoGeneral = (idTema, callback) => {
     });
 };
 
+/**
+ * Busca la ruta del archivo de la primera versión de un tema.
+ * @param {number} idTema - El ID del tema.
+ * @param {function} callback - Función de callback (error, resultado).
+ */
+Tema.buscarArchivoPrimeraVersion = (idTema, callback) => {
+    const query = 'SELECT archivo_ruta FROM VersionesTema WHERE id_tema = ? AND numero_version = 1 LIMIT 1';
+    connection.query(query, [idTema], (error, results) => {
+        if (error) return callback(error, null);
+        callback(null, results[0]); // Devuelve { archivo_ruta: '...' } o undefined
+    });
+};
 module.exports = Tema;

@@ -36,7 +36,7 @@ router.post('/',
 // PUT /api/temas/:id
 // Actualiza un tema. Solo para Secretarios. Puede incluir un archivo opcional.
 router.put('/:id', 
-    [auth.verificarToken, auth.verificarRol(['Secretario']), crearUploadMiddleware('temas').single('nuevoArchivo')], 
+    [auth.verificarToken, auth.verificarRol(['Secretario']), crearUploadMiddleware('temas').single('archivo')], 
     temaController.actualizar
 );
 

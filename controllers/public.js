@@ -1,4 +1,5 @@
-// Modelo Público
+// controllers/public.js
+
 const PublicModel = require('../models/public');
 
 // Función para listar temas aprobados

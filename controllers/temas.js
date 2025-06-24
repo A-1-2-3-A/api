@@ -100,10 +100,28 @@ temasController.buscarDetalle = (req, res) => {
         }
 
         const datosEstructurados = _estructurarDetalleTema(rows);
-        res.status(200).json({ success: 1, data: datosEstructurados });
+
+        // Se busca explícitamente el archivo de la primera versión
+        // para asegurar que siempre esté presente en la respuesta.
+        TemaModel.buscarArchivoPrimeraVersion(idTema, (err, primeraVersion) => {
+            if (err) {
+                // No se detiene la ejecución, pero se registra el error.
+                console.error("Error al buscar el archivo de la primera versión:", err);
+            }
+            
+            if (primeraVersion && primeraVersion.archivo_ruta) {
+                // Se añade un campo predecible a la respuesta.
+                datosEstructurados.archivoInicial = {
+                    ruta: primeraVersion.archivo_ruta,
+                    nombre: primeraVersion.archivo_ruta.split('/').pop()
+                };
+            }
+            
+            // Se envía la respuesta, ahora enriquecida.
+            res.status(200).json({ success: 1, data: datosEstructurados });
+        });
     });
 };
-
 // Agregar un nuevo tema
 temasController.agregar = (req, res) => {
     const temaData = req.body;

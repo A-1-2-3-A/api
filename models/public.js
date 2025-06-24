@@ -1,3 +1,5 @@
+// models/public.js
+
 // Conexion a la base de datos
 const connection = require('../config/database');
 

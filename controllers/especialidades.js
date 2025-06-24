@@ -1,72 +1,73 @@
 // controllers/especialidades.js
 
-const EspecialidadModel = require('../models/especialidades');
+const Especialidad = require('../models/especialidades');
 
 const especialidadController = {};
 
-// Función para listar todas las especialidades
 especialidadController.listar = (req, res) => {
-    EspecialidadModel.listar((err, results) => {
+    Especialidad.listar((err, especialidades) => {
         if (err) {
-            console.error('Error al listar especialidades:', err);
-            return res.status(500).json({ success: 0, message: 'Error interno del servidor.' });
+            console.error("Error al listar especialidades:", err);
+            return res.status(500).json({ success: 0, message: 'Error al obtener las especialidades' });
         }
-        return res.status(200).json({ success: 1, data: results });
+        return res.status(200).json({ success: 1, data: especialidades });
     });
 };
 
-// Función para agregar una nueva especialidad
+// NUEVO: Controlador para agregar una especialidad.
 especialidadController.agregar = (req, res) => {
-    const especialidadData = req.body;
-    if (!especialidadData.nombre_especialidad) {
-        return res.status(400).json({ success: 0, message: 'El campo "nombre_especialidad" es requerido.' });
+    const { nombre_especialidad } = req.body;
+    if (!nombre_especialidad || !nombre_especialidad.trim()) {
+        return res.status(400).json({ success: 0, message: 'El nombre de la especialidad es requerido.' });
     }
 
-    EspecialidadModel.agregar(especialidadData, (err, results) => {
+    Especialidad.agregar(nombre_especialidad, (err, result) => {
         if (err) {
-            // Manejo de error para entradas duplicadas (UNIQUE en la DB)
+            // Manejo de error para especialidad duplicada
             if (err.code === 'ER_DUP_ENTRY') {
-                return res.status(409).json({ success: 0, message: 'Ya existe una especialidad con ese nombre.' });
+                return res.status(409).json({ success: 0, message: 'La especialidad ya existe.' });
             }
-            console.error('Error al agregar especialidad:', err);
-            return res.status(500).json({ success: 0, message: 'Error al agregar la especialidad.' });
+            console.error("Error al agregar especialidad:", err);
+            return res.status(500).json({ success: 0, message: 'Error interno al agregar la especialidad.' });
         }
-        return res.status(201).json({ success: 1, message: 'Especialidad agregada con éxito', data: { id: results.insertId } });
+        return res.status(201).json({ success: 1, message: 'Especialidad agregada con éxito.', insertedId: result.insertId });
     });
 };
 
-// Función para actualizar una especialidad
+// NUEVO: Controlador para actualizar una especialidad.
 especialidadController.actualizar = (req, res) => {
-    const id = req.params.id;
-    const especialidadData = req.body;
-    if (!especialidadData.nombre_especialidad) {
-        return res.status(400).json({ success: 0, message: 'El campo "nombre_especialidad" es requerido.' });
+    const id_especialidad = req.params.id;
+    const { nombre_especialidad } = req.body;
+
+    if (!nombre_especialidad || !nombre_especialidad.trim()) {
+        return res.status(400).json({ success: 0, message: 'El nombre de la especialidad es requerido.' });
     }
 
-    EspecialidadModel.actualizar(id, especialidadData, (err, results) => {
+    Especialidad.actualizar(id_especialidad, nombre_especialidad, (err, result) => {
         if (err) {
             if (err.code === 'ER_DUP_ENTRY') {
-                return res.status(409).json({ success: 0, message: 'Ya existe una especialidad con ese nombre.' });
+                return res.status(409).json({ success: 0, message: 'Ya existe otra especialidad con ese nombre.' });
             }
-            console.error(`Error al actualizar especialidad con ID ${id}:`, err);
-            return res.status(500).json({ success: 0, message: 'Error al actualizar la especialidad.' });
+            console.error("Error al actualizar especialidad:", err);
+            return res.status(500).json({ success: 0, message: 'Error interno al actualizar la especialidad.' });
         }
-        if (results.affectedRows === 0) {
+        if (result.affectedRows === 0) {
             return res.status(404).json({ success: 0, message: 'Especialidad no encontrada.' });
         }
         return res.status(200).json({ success: 1, message: 'Especialidad actualizada con éxito.' });
     });
 };
 
-// Función para eliminar una especialidad
+// NUEVO: Controlador para eliminar una especialidad.
 especialidadController.eliminar = (req, res) => {
-    const id = req.params.id;
-    EspecialidadModel.eliminar(id, (err, results) => {
+    const id_especialidad = req.params.id;
+
+    Especialidad.eliminar(id_especialidad, (err, result) => {
         if (err) {
-            console.error(`Error al eliminar especialidad con ID ${id}:`, err);
-            return res.status(500).json({ success: 0, message: 'Error al eliminar la especialidad.' });
+            console.error("Error al eliminar especialidad:", err);
+            return res.status(500).json({ success: 0, message: 'Error interno al eliminar la especialidad.' });
         }
-        if (results.affectedRows === 0) {
+        if (result.affectedRows === 0) {
             return res.status(404).json({ success: 0, message: 'Especialidad no encontrada.' });
         }
         return res.status(200).json({ success: 1, message: 'Especialidad eliminada con éxito.' });

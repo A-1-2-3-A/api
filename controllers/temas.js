@@ -1,3 +1,5 @@
+// api/controllers/temas.js
+
 const TemaModel = require('../models/temas');
 
 /**
@@ -60,6 +62,12 @@ const _estructurarDetalleTema = (rows) => {
         }
     });
 
+    // El historial se construyó en orden descendente (v3, v2, v1),
+    // así que lo reordenamos a ascendente (v1, v2, v3) para la vista.
+    tribunalesMap.forEach(tribunal => {
+        tribunal.historialCompleto.sort((a, b) => a.version - b.version);
+    });
+
     temaInfo.revisionesPorTribunal = Array.from(tribunalesMap.values());
     return temaInfo;
 };
@@ -108,15 +116,16 @@ temasController.buscarDetalle = (req, res) => {
                 // No se detiene la ejecución, pero se registra el error.
                 console.error("Error al buscar el archivo de la primera versión:", err);
             }
-            
+
             if (primeraVersion && primeraVersion.archivo_ruta) {
                 // Se añade un campo predecible a la respuesta.
                 datosEstructurados.archivoInicial = {
+                    id: primeraVersion.id,
                     ruta: primeraVersion.archivo_ruta,
                     nombre: primeraVersion.archivo_ruta.split('/').pop()
                 };
             }
-            
+
             // Se envía la respuesta, ahora enriquecida.
             res.status(200).json({ success: 1, data: datosEstructurados });
         });

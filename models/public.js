@@ -22,11 +22,12 @@ const listarTribunales = (callback) => {
             u.nombres,
             u.apellido_primero,
             u.apellido_segundo,
-            GROUP_CONCAT(e.nombre_especialidad SEPARATOR ', ') AS especialidades
+            GROUP_CONCAT(e.nombre_especialidad SEPARATOR ', ') AS especialidades,
+            (SELECT COUNT(*) FROM AsignacionesTemaTribunal att WHERE att.id_tribunal = u.id) AS temas_asignados
         FROM Usuarios u
         LEFT JOIN UsuarioEspecialidades ue ON u.id = ue.id_usuario
         LEFT JOIN Especialidades e ON ue.id_especialidad = e.id
-        WHERE u.rol IN ('Tribunal', 'Director') AND u.estado = TRUE
+        WHERE u.rol = 'Tribunal' AND u.estado = TRUE
         GROUP BY u.id
         ORDER BY u.apellido_primero;
     `;

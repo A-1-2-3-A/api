@@ -111,7 +111,7 @@ Tema.buscarDetalleCompleto = (idTema, callback) => {
         LEFT JOIN Revisiones r ON a.id = r.id_asignacion
         LEFT JOIN VersionesTema vt ON r.id_version_tema = vt.id
         WHERE t.id = ?
-        ORDER BY a.id_tribunal, vt.numero_version;
+        ORDER BY a.id_tribunal, vt.numero_version DESC;
     `;
     connection.query(query, [idTema], (error, results) => {
         if (error) return callback(error, null);
@@ -260,15 +260,16 @@ Tema.actualizarEstadoGeneral = (idTema, callback) => {
 };
 
 /**
- * Busca la ruta del archivo de la primera versión de un tema.
+ * Busca el ID y la ruta del archivo de la primera versión de un tema.
  * @param {number} idTema - El ID del tema.
  * @param {function} callback - Función de callback (error, resultado).
  */
 Tema.buscarArchivoPrimeraVersion = (idTema, callback) => {
-    const query = 'SELECT archivo_ruta FROM VersionesTema WHERE id_tema = ? AND numero_version = 1 LIMIT 1';
+    const query = 'SELECT id, archivo_ruta FROM VersionesTema WHERE id_tema = ? AND numero_version = 1 LIMIT 1';
     connection.query(query, [idTema], (error, results) => {
         if (error) return callback(error, null);
-        callback(null, results[0]); // Devuelve { archivo_ruta: '...' } o undefined
+        callback(null, results[0]);
     });
 };
+
 module.exports = Tema;

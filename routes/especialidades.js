@@ -5,37 +5,42 @@ const router = express.Router();
 const especialidadController = require('../controllers/especialidades');
 const auth = require('../middlewares/auth');
 
-// --- Definición de Roles ---
-// Solo los administradores pueden gestionar el catálogo de especialidades.
-const rolesAdmin = ['Director', 'Secretario'];
+/**
+ * GET /api/especialidades
+ * Obtiene una lista de todas las especialidades.
+ * Accesible para cualquier usuario autenticado.
+ */
+router.get('/', auth.verificarToken, especialidadController.listar);
 
-// --- Rutas para el recurso "Especialidades" ---
+// --- NUEVAS RUTAS CRUD PROTEGIDAS ---
 
-// GET /api/especialidades/
-// Lista todas las especialidades. Protegido para que solo usuarios logueados puedan verlas.
-router.get('/', 
-    [auth.verificarToken], 
-    especialidadController.listar
-);
-
-// POST /api/especialidades/
-// Agrega una nueva especialidad.
-router.post('/', 
-    [auth.verificarToken, auth.verificarRol(rolesAdmin)], 
+/**
+ * POST /api/especialidades
+ * Crea una nueva especialidad.
+ * Solo para Director y Secretario.
+ */
+router.post('/',
+    [auth.verificarToken, auth.verificarRol(['Director', 'Secretario'])],
     especialidadController.agregar
 );
 
-// PUT /api/especialidades/:id
-// Actualiza una especialidad existente.
-router.put('/:id', 
-    [auth.verificarToken, auth.verificarRol(rolesAdmin)], 
+/**
+ * PUT /api/especialidades/:id
+ * Actualiza una especialidad existente.
+ * Solo para Director y Secretario.
+ */
+router.put('/:id',
+    [auth.verificarToken, auth.verificarRol(['Director', 'Secretario'])],
     especialidadController.actualizar
 );
 
-// DELETE /api/especialidades/:id
-// Elimina una especialidad.
-router.delete('/:id', 
-    [auth.verificarToken, auth.verificarRol(rolesAdmin)], 
+/**
+ * DELETE /api/especialidades/:id
+ * Elimina una especialidad existente.
+ * Solo para Director y Secretario.
+ */
+router.delete('/:id',
+    [auth.verificarToken, auth.verificarRol(['Director', 'Secretario'])],
     especialidadController.eliminar
 );
 

@@ -5,64 +5,47 @@ const connection = require('../config/database');
 const Especialidad = {};
 
 /**
- * Lista todas las especialidades disponibles.
- * @param {function} callback - Función de callback (error, resultados).
+ * Lista todas las especialidades.
+ * @param {function} callback - Callback que maneja la respuesta.
  */
 Especialidad.listar = (callback) => {
-    const query = 'SELECT * FROM Especialidades ORDER BY nombre_especialidad';
-    connection.query(query, (error, results) => {
-        if (error) {
-            return callback(error, null);
-        }
-        callback(null, results);
-    });
+    const sql = 'SELECT * FROM Especialidades ORDER BY nombre_especialidad ASC';
+    connection.query(sql, callback);
 };
 
+// Función para agregar una nueva especialidad.
 /**
- * Agrega una nueva especialidad.
- * @param {object} especialidadData - Datos de la especialidad (nombre_especialidad).
- * @param {function} callback - Función de callback (error, resultado).
+ * Agrega una nueva especialidad a la base de datos.
+ * @param {string} nombre_especialidad - El nombre de la especialidad.
+ * @param {function} callback - Callback que maneja la respuesta.
  */
-Especialidad.agregar = (especialidadData, callback) => {
-    const query = 'INSERT INTO Especialidades (nombre_especialidad) VALUES (?)';
-    connection.query(query, [especialidadData.nombre_especialidad], (error, results) => {
-        if (error) {
-            return callback(error);
-        }
-        callback(null, results);
-    });
+Especialidad.agregar = (nombre_especialidad, callback) => {
+    const sql = 'INSERT INTO Especialidades (nombre_especialidad) VALUES (?)';
+    connection.query(sql, [nombre_especialidad], callback);
 };
 
+// Función para actualizar una especialidad existente.
 /**
- * Actualiza una especialidad existente.
- * @param {number} id - El ID de la especialidad.
- * @param {object} especialidadData - Los nuevos datos.
- * @param {function} callback - Función de callback (error, resultado).
+ * Actualiza el nombre de una especialidad por su ID.
+ * @param {number} id - El ID de la especialidad a actualizar.
+ * @param {string} nombre_especialidad - El nuevo nombre para la especialidad.
+ * @param {function} callback - Callback que maneja la respuesta.
  */
-Especialidad.actualizar = (id, especialidadData, callback) => {
-    const query = 'UPDATE Especialidades SET nombre_especialidad = ? WHERE id = ?';
-    const params = [especialidadData.nombre_especialidad, id];
-    connection.query(query, params, (error, results) => {
-        if (error) {
-            return callback(error);
-        }
-        return callback(null, results);
-    });
+Especialidad.actualizar = (id, nombre_especialidad, callback) => {
+    const sql = 'UPDATE Especialidades SET nombre_especialidad = ? WHERE id = ?';
+    connection.query(sql, [nombre_especialidad, id], callback);
 };
 
+// Función para eliminar una especialidad.
 /**
- * Elimina una especialidad de la base de datos.
+ * Elimina una especialidad por su ID.
  * @param {number} id - El ID de la especialidad a eliminar.
- * @param {function} callback - Función de callback (error, resultado).
+ * @param {function} callback - Callback que maneja la respuesta.
  */
 Especialidad.eliminar = (id, callback) => {
-    const query = 'DELETE FROM Especialidades WHERE id = ?';
-    connection.query(query, [id], (error, results) => {
-        if (error) {
-            return callback(error);
-        }
-        return callback(null, results);
-    });
+    const sql = 'DELETE FROM Especialidades WHERE id = ?';
+    connection.query(sql, [id], callback);
 };
+
 
 module.exports = Especialidad;

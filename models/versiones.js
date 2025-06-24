@@ -76,5 +76,39 @@ Version.agregar = (idAsignacion, archivoRuta, comentariosEstudiante, callback) =
     });
 };
 
+/**
+ * Busca una versión de un tema por su ID y verifica si el tribunal
+ * tiene permiso para acceder a ella.
+ * @param {number} idVersion - El ID de la versión del tema (tabla VersionesTema).
+ * @param {number} idTribunal - El ID del tribunal que solicita la descarga.
+ * @param {function} callback - Callback (error, resultado con la ruta del archivo).
+ */
+Version.buscarParaDescargaTribunal = (idVersion, idTribunal, callback) => {
+    const query = `
+        SELECT vt.archivo_ruta
+        FROM VersionesTema vt
+        JOIN Temas t ON vt.id_tema = t.id
+        JOIN AsignacionesTemaTribunal a ON t.id = a.id_tema
+        WHERE vt.id = ? AND a.id_tribunal = ?
+        LIMIT 1;
+    `;
+    connection.query(query, [idVersion, idTribunal], (error, results) => {
+        if (error) return callback(error, null);
+        callback(null, results[0]);
+    });
+};
+
+/**
+ * Busca la ruta de una versión por su ID.
+ * @param {number} idVersion - El ID de la versión del tema.
+ * @param {function} callback - Callback (error, resultado).
+ */
+Version.buscarRutaPorId = (idVersion, callback) => {
+    const query = 'SELECT archivo_ruta FROM VersionesTema WHERE id = ? LIMIT 1';
+    connection.query(query, [idVersion], (error, results) => {
+        if (error) return callback(error, null);
+        callback(null, results[0]);
+    });
+};
 
 module.exports = Version;

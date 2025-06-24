@@ -74,4 +74,48 @@ Retroalimentacion.listarPorAsignacionYVersion = (idAsignacion, idVersionTema, ca
     });
 };
 
+/**
+ * Busca un archivo de retroalimentación por su ID y verifica si pertenece
+ * a un tema del estudiante especificado.
+ * @param {number} idRetroalimentacion - El ID del archivo a descargar.
+ * @param {number} idEstudiante - El ID del estudiante que solicita la descarga.
+ * @param {function} callback - Callback (error, resultado con la ruta del archivo).
+ */
+Retroalimentacion.buscarParaDescargaEstudiante = (idRetroalimentacion, idEstudiante, callback) => {
+    const query = `
+        SELECT rt.archivo_retroalimentacion_ruta
+        FROM RetroalimentacionesTema rt
+        JOIN AsignacionesTemaTribunal a ON rt.id_asignacion = a.id
+        JOIN Temas t ON a.id_tema = t.id
+        WHERE rt.id = ? AND t.id_estudiante = ?
+        LIMIT 1;
+    `;
+    connection.query(query, [idRetroalimentacion, idEstudiante], (error, results) => {
+        if (error) return callback(error, null);
+        // Si la consulta devuelve una fila, el estudiante tiene permiso.
+        callback(null, results[0]);
+    });
+};
+
+/**
+ * Busca un archivo de retroalimentación y verifica que pertenezca
+ * a la asignación del tribunal que lo solicita.
+ * @param {number} idRetroalimentacion - El ID del archivo a descargar.
+ * @param {number} idTribunal - El ID del tribunal que solicita.
+ * @param {function} callback - Callback (error, resultado).
+ */
+Retroalimentacion.buscarParaDescargaTribunal = (idRetroalimentacion, idTribunal, callback) => {
+    const query = `
+        SELECT rt.archivo_retroalimentacion_ruta
+        FROM RetroalimentacionesTema rt
+        JOIN AsignacionesTemaTribunal a ON rt.id_asignacion = a.id
+        WHERE rt.id = ? AND a.id_tribunal = ?
+        LIMIT 1;
+    `;
+    connection.query(query, [idRetroalimentacion, idTribunal], (error, results) => {
+        if (error) return callback(error, null);
+        callback(null, results[0]);
+    });
+};
+
 module.exports = Retroalimentacion;

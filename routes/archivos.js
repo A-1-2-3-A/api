@@ -1,21 +1,32 @@
-// routes/archivos.js
+// api/routes/archivos.js
 
 const express = require('express');
 const router = express.Router();
 const ArchivoController = require('../controllers/archivos');
 const auth = require('../middlewares/auth');
 
-// --- Rutas para el recurso "Archivos" ---
+// Ruta para que el ESTUDIANTE descargue un archivo de retroalimentación
+router.get('/retroalimentacion/estudiante/:id',
+    [auth.verificarToken, auth.verificarRol(['Estudiante'])],
+    ArchivoController.descargarRetroalimentacionEstudiante
+);
 
-/**
- * GET /api/archivos/descargar?ruta=<ruta_del_archivo>
- * Permite a un usuario autenticado descargar un archivo del servidor.
- * La ruta del archivo se pasa como un parámetro de consulta (query param).
- * El controlador se encarga de la validación de seguridad de la ruta.
- */
-router.get('/descargar', 
-    [auth.verificarToken], 
-    ArchivoController.descargar
+// Ruta para que el TRIBUNAL descargue la versión del tema de un estudiante
+router.get('/tema-version/:id',
+    [auth.verificarToken, auth.verificarRol(['Tribunal'])],
+    ArchivoController.descargarVersionTemaTribunal
+);
+
+// Ruta para que el TRIBUNAL descargue su propio archivo de retroalimentación
+router.get('/retroalimentacion/tribunal/:id',
+    [auth.verificarToken, auth.verificarRol(['Tribunal'])],
+    ArchivoController.descargarRetroalimentacionTribunal
+);
+
+// Ruta para que un Admin (Director/Secretario) descargue una versión de tema.
+router.get('/tema-version/admin/:id',
+    [auth.verificarToken, auth.verificarRol(['Director', 'Secretario'])],
+    ArchivoController.descargarVersionTemaAdmin
 );
 
 module.exports = router;

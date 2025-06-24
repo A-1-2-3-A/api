@@ -22,7 +22,7 @@ revisionController.registrarVeredicto = (req, res) => {
     AsignacionModel.buscarAsignacionPorIdRevision(id_revision, (err, asignacion) => {
         if (err) return res.status(500).json({ success: 0, message: 'Error al buscar la asignación.' });
         if (!asignacion) return res.status(404).json({ success: 0, message: 'Revisión o asignación no encontrada.' });
-        
+
         if (asignacion.id_tribunal !== id_tribunal_token) {
             return res.status(403).json({ success: 0, message: 'Acceso denegado.' });
         }
@@ -38,16 +38,14 @@ revisionController.registrarVeredicto = (req, res) => {
 
             // Si se subió un archivo, lo guardamos en la tabla de retroalimentaciones.
             if (req.file) {
-                const archivo_ruta = req.file.path.replace(/\\/g, "/");
-                // Necesitamos el id_version_tema, que está en la asignación que ya recuperamos.
-                const id_version_tema = asignacion.id_version_tema; // Asumimos que esta info está en la asignación.
+                // Se construye la ruta relativa de forma manual y consistente.
+                const archivo_ruta = `uploads/retroalimentaciones/${req.file.filename}`;
 
                 // Necesitamos obtener el id_version_tema de la revisión actual.
-                 const queryRevision = 'SELECT id_version_tema FROM Revisiones WHERE id = ?';
-                 require('../config/database').query(queryRevision, [id_revision], (err, revData) => {
+                const queryRevision = 'SELECT id_version_tema FROM Revisiones WHERE id = ?';
+                require('../config/database').query(queryRevision, [id_revision], (err, revData) => {
                     if (err || !revData.length) {
                         console.error("No se pudo encontrar id_version_tema para la retroalimentación.");
-                        // Continuamos sin guardar el archivo, pero el veredicto ya se guardó.
                     } else {
                         const id_version_tema = revData[0].id_version_tema;
                         RetroalimentacionModel.agregarArchivo(asignacion.id, id_version_tema, archivo_ruta, 'Archivo adjunto con el veredicto.', (err, fileResult) => {
@@ -60,7 +58,7 @@ revisionController.registrarVeredicto = (req, res) => {
             }
 
             TemaModel.actualizarEstadoGeneral(asignacion.id_tema, (err, result) => {
-                if(err) console.error("Error al actualizar estado del tema:", err);
+                if (err) console.error("Error al actualizar estado del tema:", err);
             });
 
             return res.status(200).json({ success: 1, message: 'Veredicto registrado con éxito.' });
